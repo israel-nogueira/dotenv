@@ -1,0 +1,19 @@
+{
+    "name": "israel-nogueira/dotenv",
+    "description": "Gerencie de forma rápida seus arquivos .env",
+    "authors": [{
+        "name": "Israel Nogueira",
+        "email": "israel@feats.com.br"
+    }],
+    "license": "MIT",
+    "keywords": [ "environment", "env", "dotenv" ],
+    "type": "library",
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "IsraelNogueira\\Dotenv\\": "src/"
+        }
+    }
+}
