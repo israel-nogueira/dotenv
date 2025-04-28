@@ -28,7 +28,9 @@ class env{
     |
     */
         static public function create($FILE='.env') {
-            $_NEW = self::getPath().$FILE;
+            // $_NEW = self::getPath().$FILE;
+            die(\system\lib\system::ajaxReturn($FILE,1,0));
+            $_NEW = $FILE;
             if(!file_exists($_NEW)){
                 @mkdir(dirname($_NEW),0775,true);
                 file_put_contents($_NEW,"");
@@ -45,14 +47,11 @@ class env{
     |
     */
         static public function install($FILE='.env',$replace=false) {
-            $ENV_FILE   = self::getPath() . $FILE;
+            $ENV_FILE   = $FILE;
             if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
             $ENV        = parse_ini_file($ENV_FILE);
-            $NOW        = getEnv()??[];
             foreach ($ENV as $key => $line){
-                if(empty($NOW[$key]) ||  (isset($NOW[$key]) && $replace==true)){
-                    putenv($key.'='.$line);
-                }
+               putenv($key.'='.$line);
             }
         }
 
@@ -67,7 +66,8 @@ class env{
     |
     */
         static public function update($KEY=null,$VALUE=null,$FILE='.env',$replace=false) {
-            $ENV_FILE   = self::getPath() . $FILE;
+            // $ENV_FILE   = self::getPath() . $FILE;
+            $ENV_FILE   = $FILE;
             if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
             $ENV = parse_ini_file($ENV_FILE);
             if(isset($ENV[$KEY])){
@@ -93,7 +93,8 @@ class env{
     |
     */
         static public function insert($KEY=null,$VALUE=null,$FILE='.env',$replace=false) {
-            $ENV_FILE   = self::getPath() . $FILE;
+            // $ENV_FILE   = self::getPath() . $FILE;
+            $ENV_FILE   = $FILE;
             if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
             $ENV = parse_ini_file($ENV_FILE);
             if(empty($ENV[$KEY]) || ( isset($ENV[$KEY]) && $replace==true) ){
@@ -117,7 +118,8 @@ class env{
     |
     */
     static public function delete($KEY=null,$FILE='.env') {
-        $ENV_FILE   = self::getPath() . $FILE;
+        // $ENV_FILE   = self::getPath() . $FILE;
+        $ENV_FILE   = $FILE;
         if(!file_exists($ENV_FILE)){
             throw new Exception("Arquivo  $ENV_FILE não existe", 1);
         }
