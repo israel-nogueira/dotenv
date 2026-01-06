@@ -28,6 +28,8 @@ class env{
     |
     */
         static public function create($FILE='.env') {
+            // $_NEW = self::getPath().$FILE;
+            die(\system\lib\system::ajaxReturn($FILE,1,0));
             $_NEW = $FILE;
             if(!file_exists($_NEW)){
                 @mkdir(dirname($_NEW),0775,true);
@@ -44,44 +46,14 @@ class env{
     |   Basicamente importa as variáveis de um arquivo
     |
     */
-		static public function install($FILE = '.env', $replace = false) {
-			// 1. Resolve o caminho absoluto para evitar caminhos duplicados ou relativos errados
-			$ENV_FILE = realpath($FILE);
-
-			// 2. Valida se o arquivo realmente existe após o realpath
-			if (!$ENV_FILE || !file_exists($ENV_FILE)) {
-				throw new \Exception("Arquivo .env não encontrado em: " . ($ENV_FILE ?: $FILE), 1);
-			}
-
-			// 3. Parser manual (Substitui a parse_ini_file que estava dando erro de 'undefined')
-			$content = file_get_contents($ENV_FILE);
-			$lines = explode("\n", str_replace("\r", "", $content));
-			
-			foreach ($lines as $line) {
-				$line = trim($line);
-				
-				// Pula linhas vazias ou comentários
-				if (empty($line) || $line[0] === '#') {
-					continue;
-				}
-
-				// Divide apenas no primeiro '=' encontrado
-				if (strpos($line, '=') !== false) {
-					list($key, $value) = explode('=', $line, 2);
-					
-					$key   = trim($key);
-					$value = trim($value, " \t\n\r\0\x0B\""); // Remove espaços e aspas dos valores
-
-					// 4. Define a variável de ambiente (Usa \ para garantir função global)
-					// Se $replace for false, não sobrescreve variáveis já existentes no sistema
-					if ($replace || getenv($key) === false) {
-						\putenv("{$key}={$value}");
-						$_ENV[$key] = $value;
-						$_SERVER[$key] = $value;
-					}
-				}
-			}
-		}
+        static public function install($FILE='.env',$replace=false) {
+            $ENV_FILE   = $FILE;
+            if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
+            $ENV        = parse_ini_file($ENV_FILE);
+            foreach ($ENV as $key => $line){
+               putenv($key.'='.$line);
+            }
+        }
 
 
     /*
@@ -93,55 +65,23 @@ class env{
     |
     |
     */
-	static public function update($KEY = null, $VALUE = null, $FILE = '.env', $replace = false) {
-		// 1. Resolve o caminho absoluto
-		$ENV_FILE = realpath($FILE);
-
-		if (!$ENV_FILE || !file_exists($ENV_FILE)) {
-			throw new \Exception("Arquivo .env não encontrado em: " . ($ENV_FILE ?: $FILE), 1);
-		}
-
-		// 2. Lê o arquivo linha por linha para preservar comentários e ordem (opcionalmente)
-		// Mas para simplificar e seguir sua lógica de reconstrução total:
-		$content = file_get_contents($ENV_FILE);
-		$lines = explode("\n", str_replace("\r", "", $content));
-		$envData = [];
-		$found = false;
-
-		foreach ($lines as $line) {
-			$line = trim($line);
-			if (empty($line) || $line[0] === '#') continue;
-
-			if (strpos($line, '=') !== false) {
-				list($k, $v) = explode('=', $line, 2);
-				$envData[trim($k)] = trim($v, " \t\n\r\0\x0B\"");
-			}
-		}
-
-		// 3. Verifica se a chave existe e atualiza
-		if (array_key_exists($KEY, $envData)) {
-			$envData[$KEY] = $VALUE;
-			$found = true;
-		}
-
-		if (!$found) {
-			throw new \Exception("env::update() => Não existe a chave " . $KEY, 1);
-		}
-
-		// 4. Monta o novo conteúdo do arquivo
-		$newContent = [];
-		foreach ($envData as $k => $v) {
-			$newContent[] = "{$k}=\"{$v}\""; // Adicionamos aspas para evitar erros futuros no parser
-		}
-
-		// 5. Salva o arquivo
-		if (file_put_contents($ENV_FILE, implode(PHP_EOL, $newContent)) === false) {
-			throw new \Exception("Erro ao escrever no arquivo: " . $ENV_FILE);
-		}
-
-		// 6. Recarrega as variáveis na memória usando a nova install()
-		self::install($ENV_FILE, $replace);
-	}
+        static public function update($KEY=null,$VALUE=null,$FILE='.env',$replace=false) {
+            // $ENV_FILE   = self::getPath() . $FILE;
+            $ENV_FILE   = $FILE;
+            if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
+            $ENV = parse_ini_file($ENV_FILE);
+            if(isset($ENV[$KEY])){
+                $ENV[$KEY]  = $VALUE;
+                $NEW        = [];
+                foreach ($ENV as $key => $line){
+                    $NEW[] = $key.'='.$line.'';
+                }
+                file_put_contents($ENV_FILE,implode(PHP_EOL,$NEW));
+                self::install($FILE,$replace);
+            }else{
+                throw new Exception("env::update() => Não existe a chave ".$KEY, 1);
+            }        
+        }
 
     /*
     |--------------------------------------------------------------------------
@@ -152,53 +92,21 @@ class env{
     |
     |
     */
-		static public function insert($KEY = null, $VALUE = null, $FILE = '.env', $replace = false) {
-			// 1. Resolve o caminho absoluto e limpa possíveis duplicatas de diretório
-			$ENV_FILE = realpath($FILE) ?: $FILE;
+        static public function insert($KEY=null,$VALUE=null,$FILE='.env',$replace=false) {
+            // $ENV_FILE   = self::getPath() . $FILE;
+            $ENV_FILE   = $FILE;
+            if(!file_exists($ENV_FILE)){throw new Exception("Arquivo  $ENV_FILE não existe", 1);}
+            $ENV = parse_ini_file($ENV_FILE);
+            if(empty($ENV[$KEY]) || ( isset($ENV[$KEY]) && $replace==true) ){
+                $ENV[$KEY]  = $VALUE;
+                putenv($KEY . '=' . $VALUE);
+                $NEW        = [];
+                foreach ($ENV as $key => $line){$NEW[] = $key.'="'.$line.'"';}
+                file_put_contents($ENV_FILE,implode(PHP_EOL,$NEW) );
+                self::install($FILE,$replace);
+            }         
+        }
 
-			if (!file_exists($ENV_FILE)) {
-				throw new \Exception("Arquivo $ENV_FILE não existe", 1);
-			}
-
-			// 2. Parser manual para evitar o erro de "undefined function parse_ini_file"
-			$content = file_get_contents($ENV_FILE);
-			$lines = explode("\n", str_replace("\r", "", $content));
-			$ENV = [];
-			
-			foreach ($lines as $line) {
-				$line = trim($line);
-				if (empty($line) || $line[0] === '#') continue;
-				if (strpos($line, '=') !== false) {
-					list($k, $v) = explode('=', $line, 2);
-					$ENV[trim($k)] = trim($v, " \t\n\r\0\x0B\"");
-				}
-			}
-
-			// 3. Lógica de Inserção/Substituição
-			// Se a chave não existe OU (existe e o replace é true)
-			if (!isset($ENV[$KEY]) || $replace === true) {
-				$ENV[$KEY] = $VALUE;
-				
-				// Atualiza na memória imediata
-				\putenv($KEY . '=' . $VALUE);
-				$_ENV[$KEY] = $VALUE;
-				$_SERVER[$KEY] = $VALUE;
-
-				// 4. Reconstrói o arquivo com aspas para segurança de tipos e espaços
-				$NEW = [];
-				foreach ($ENV as $key => $val) {
-					$NEW[] = $key . '="' . $val . '"';
-				}
-
-				// 5. Grava as alterações de volta no arquivo
-				if (file_put_contents($ENV_FILE, implode(PHP_EOL, $NEW)) === false) {
-					throw new \Exception("Erro ao gravar no arquivo $ENV_FILE", 1);
-				}
-
-				// 6. Recarrega para garantir consistência total
-				self::install($ENV_FILE, $replace);
-			}
-		}
 
     /*
     |--------------------------------------------------------------------------
@@ -209,49 +117,23 @@ class env{
     |
     |
     */
-		static public function delete($KEY = null, $FILE = '.env') {
-			// 1. Resolve o caminho absoluto para evitar erros de diretório duplicado
-			$ENV_FILE = realpath($FILE) ?: $FILE;
-
-			if (!file_exists($ENV_FILE)) {
-				throw new \Exception("Arquivo $ENV_FILE não existe", 1);
-			}
-
-			// 2. Parser manual (mesmo padrão usado nas outras funções)
-			$content = file_get_contents($ENV_FILE);
-			$lines = explode("\n", str_replace("\r", "", $content));
-			$ENV = [];
-			
-			foreach ($lines as $line) {
-				$line = trim($line);
-				if (empty($line) || $line[0] === '#') continue;
-				if (strpos($line, '=') !== false) {
-					list($k, $v) = explode('=', $line, 2);
-					$ENV[trim($k)] = trim($v, " \t\n\r\0\x0B\"");
-				}
-			}
-
-			// 3. Verifica se a chave existe para remover
-			if (isset($ENV[$KEY])) {
-				unset($ENV[$KEY]);
-
-				// 4. Remove da memória do processo atual
-				\putenv($KEY); // No PHP, putenv("CHAVE") sem o "=" remove a variável
-				unset($_ENV[$KEY]);
-				unset($_SERVER[$KEY]);
-
-				// 5. Reconstrói o arquivo com as chaves restantes
-				$NEW = [];
-				foreach ($ENV as $key => $val) {
-					$NEW[] = $key . '="' . $val . '"';
-				}
-
-				// 6. Grava de volta no arquivo
-				if (file_put_contents($ENV_FILE, implode(PHP_EOL, $NEW)) === false) {
-					throw new \Exception("Erro ao gravar no arquivo $ENV_FILE", 1);
-				}
-			}
-		}
+    static public function delete($KEY=null,$FILE='.env') {
+        // $ENV_FILE   = self::getPath() . $FILE;
+        $ENV_FILE   = $FILE;
+        if(!file_exists($ENV_FILE)){
+            throw new Exception("Arquivo  $ENV_FILE não existe", 1);
+        }
+        $ENV = parse_ini_file($ENV_FILE);
+        if(isset($ENV[$KEY])){
+            unset($ENV[$KEY]);
+            putenv($KEY);
+            $NEW        = [];
+            foreach ($ENV as $key => $line){
+                $NEW[] = $key.'="'.$line.'"';
+            }
+            file_put_contents($ENV_FILE,implode(PHP_EOL,$NEW) );
+        }         
+    }
 
 
 }
